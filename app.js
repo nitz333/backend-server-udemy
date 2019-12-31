@@ -1,53 +1,62 @@
-/*
-  Requires (son importaciones de librerías de terceros o personalizadas necesarias)
-*/
+// =========================================================
+// Requires (son importaciones de librerías de terceros o personalizadas necesarias)
+// =========================================================
 // En primer lugar debemos cargar la librería de 'express':
 var express = require('express');
 // Luego (tras haber instalado mongoose al proyecto) cargamos la librería de nuestra base de datos 'mongoose':
 var mongoose = require('mongoose');
+// Usaremos la librería 'Body Parser' para peticiones tipo POST
+var bodyParser = require('body-parser');
 
 
-/*
-  Inicialización de variables
-*/
-// Inicializamos el express. Con esto se define nuestro servidor express:
+// =========================================================
+// Inicialización de variables
+// =========================================================
+// Con esto se configura e inicializa el servidor express:
 var app = express();
+
+// Configuramos la librería 'Body Parser' (https://www.npmjs.com/package/body-parser)
+app.use(bodyParser.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
+app.use(bodyParser.json()); // parse application/json
+
+
+// Importación de rutas
+var indexRoutes = require('./routes/index');
+var usuarioRoutes = require('./routes/usuario');
+var loginRoutes = require('./routes/login');
+
 // Nos conectamos a la base de datos:
-mongoose.connection.openUri('mongodb://localhost:27017/hospitalDB', (err, res) => {
-
-    // Si hay algún error, lanzamos el error (recordando que en JavaScript el throw detiene todo)
-    if (err) throw err;
-
+// IMPORTANTE: A diferencia del video, la conexión la estableceré de la siguiente forma ya que a la fecha
+//             MongoDB ha realizado cambios y el código del video me daba los warnings:
+//             (node:3228) DeprecationWarning: current URL string... pass option { useNewUrlParser: true } to MongoClient.connect.
+//             (node:11168) DeprecationWarning: collection.ensureIndex is deprecated. Use createIndexes instead.
+//             (node:3228) DeprecationWarning: current Server Dis... pass option { useUnifiedTopology: true } to the MongoClient constructor.
+mongoose.connection.openUri('mongodb://localhost:27017/hospitalDB', {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    useUnifiedTopology: true
+}).then(() => {
     console.log('MongoDB en el puerto 27017: \x1b[32m%s\x1b[0m', 'online');
-
+}).catch(err => {
+    // Si hay algún error, lanzamos el error (recordando que en JavaScript el throw detiene todo)
+    console.error(err);
 });
 
 
-/*
-  Rutas
-*/
-// Establecemos nuestra primera ruta (con tipo de petición get).
-// Donde el primer argumento es el path (en este caso la raíz);
-// y el segundo argumento es una función callback que recibe 3 parámetros: request, response y next (se usa en middleware
-// y le dice a express que cuando se ejecute continúe con la siguiente expresión)
-app.get('/', (req, res, next) => {
-
-    // Con express es fácil mandar el código http de la petición para nuestros servicios REST con
-    // la función status() pero además quiero que la respuesta sea un JSON.
-    // IMPORTANTE: Es una buena práctica estandarizar nuestras respuestas, es decir, el objeto JSON
-    //             que vamos a responder, ya que se pretende que la API de nuestro backend responda
-    //             de forma similar (mismas key: value) para cualquier petición y código http devuelto.
-    res.status(200).json({
-        ok: true,
-        mensaje: "Petición realizada correctamente"
-    });
-
-});
+// =========================================================
+// Rutas
+// =========================================================
+// [Se modularizó esta parte para no llenar de rutas este archivo]
+// NOTA: Las rutas serán a través de middlewares (es algo que se ejecuta antes de que se resuelvan otras rutas);
+//       Las rutas deben ser ordenadas de más particulares a más generales (la raíz es la más general)
+app.use('/usuario', usuarioRoutes);
+app.use('/login', loginRoutes);
+app.use('/', indexRoutes);
 
 
-/*
-  Escucha de peticiones
-*/
+// =========================================================
+// Escucha de peticiones
+// =========================================================
 // Ponemos a escuchar a nuestro servidor express en el puerto que queramos (en mi caso el 3000):
 app.listen(3000, () => {
     console.log('Express server en el puerto 3000: \x1b[32m%s\x1b[0m', 'online');
