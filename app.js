@@ -24,6 +24,11 @@ app.use(bodyParser.json()); // parse application/json
 var indexRoutes = require('./routes/index');
 var usuarioRoutes = require('./routes/usuario');
 var loginRoutes = require('./routes/login');
+var hospitalRoutes = require('./routes/hospital');
+var medicoRoutes = require('./routes/medico');
+var busquedaRoutes = require('./routes/busqueda');
+var uploadRoutes = require('./routes/upload');
+var imagenesRoutes = require('./routes/imagenes');
 
 // Nos conectamos a la base de datos:
 // IMPORTANTE: A diferencia del video, la conexión la estableceré de la siguiente forma ya que a la fecha
@@ -49,8 +54,13 @@ mongoose.connection.openUri('mongodb://localhost:27017/hospitalDB', {
 // [Se modularizó esta parte para no llenar de rutas este archivo]
 // NOTA: Las rutas serán a través de middlewares (es algo que se ejecuta antes de que se resuelvan otras rutas);
 //       Las rutas deben ser ordenadas de más particulares a más generales (la raíz es la más general)
+app.use('/medico', medicoRoutes);
+app.use('/hospital', hospitalRoutes);
 app.use('/usuario', usuarioRoutes);
 app.use('/login', loginRoutes);
+app.use('/busqueda', busquedaRoutes);
+app.use('/upload', uploadRoutes);
+app.use('/img', imagenesRoutes);
 app.use('/', indexRoutes);
 
 

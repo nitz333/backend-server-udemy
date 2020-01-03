@@ -1,16 +1,14 @@
 var express = require('express');
-// Librería para encriptar cadenas (en nuestro caso para la contraseña)
-var bcrypt = require('bcryptjs');
 // Usaremos el middleware de autenticación por token para ciertas peticiones
 var mwAutenticacion = require('../middlewares/autenticacion');
 
 var rutas = express();
 
-// Ya que estas rutas trabajarán con el modelo Usuario, debemos establecerlo para quien quiera crear instancias de éste:
-var Usuario = require('../models/usuario');
+// Ya que estas rutas trabajarán con el modelo Medico, debemos establecerlo para quien quiera crear instancias de éste:
+var Medico = require('../models/medico');
 
 // =========================================================
-// GET: Obtener todos los usuarios
+// GET: Obtener todos los médicos
 // =========================================================
 rutas.get('/', (req, res, next) => {
 
@@ -19,10 +17,14 @@ rutas.get('/', (req, res, next) => {
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    // Hacemos la búsqueda de todos los documentos (registros) de usuarios en la BD
-    Usuario.find({}, 'nombre primer_apellido segundo_apellido email img role')
+    // Hacemos la búsqueda de todos los documentos (registros) de medicos en la BD
+    // Nota: con populate() llenamos los datos que corresponden al id del usuario e id del hospital
+    //       que los documentos de medicos tienen asociados. 
+    Medico.find({})
         .skip(desde)
         .limit(5)
+        .populate('usuario', 'nombre primer_apellido segundo_apellido email')
+        .populate('hospital')
         .exec(
             (err, docs) => {
 
@@ -30,7 +32,7 @@ rutas.get('/', (req, res, next) => {
                 if (err) {
                     return res.status(500).json({
                         ok: false,
-                        mensaje: "Error al cargar usuarios.",
+                        mensaje: "Error al cargar medicos.",
                         errors: err
                     });
                 }
@@ -39,22 +41,22 @@ rutas.get('/', (req, res, next) => {
 
                 // Para la paginación en el lado del frontend es útil conocer la cantidad de documentos totales en la colección
                 // Usamos la función count() de mongoose
-                Usuario.countDocuments({}, (err, conteo) => {
+
+                Medico.countDocuments({}, (err, conteo) => {
 
                     res.status(200).json({
                         ok: true,
-                        usuarios: docs,
+                        medicos: docs,
                         total: conteo
                     });
 
                 });
 
             });
-
 });
 
 // =========================================================
-// PUT: Actualizar un usuario (petición PUT o PATCH es prácticamente lo mismo)
+// PUT: Actualizar un médico (petición PUT o PATCH es prácticamente lo mismo)
 // =========================================================
 rutas.put('/:id', mwAutenticacion.verificaToken, (req, res) => {
 
@@ -65,15 +67,17 @@ rutas.put('/:id', mwAutenticacion.verificaToken, (req, res) => {
     // Nota: por cuestión de gustos todas mis variables las declaro al inicio
     var body = req.body;
 
-    // Buscamos por la existencia del usuario con la función findById de mongoose
-    Usuario.findById(id, (err, documento) => {
+    //body.usuario = req.usuarioToken._id; // Añadido a la petición en mwAutenticacion.verificaToken
+
+    // Buscamos por la existencia del médico con la función findById de mongoose
+    Medico.findById(id, (err, documento) => {
 
         // Si hubo algún error en la búsqueda
         // Nota: No es error 400 ya que los métodos find* regresan siempre algo, puede ser null, pero si no entonces es un error 500
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: "Error al buscar usuario.",
+                mensaje: "Error al buscar médico",
                 errors: err
             });
         }
@@ -83,43 +87,40 @@ rutas.put('/:id', mwAutenticacion.verificaToken, (req, res) => {
         if (!documento) {
             return res.status(400).json({
                 ok: false,
-                mensaje: "El usuario con id " + id + " no existe.",
-                errors: { message: 'No existe el usuario con ese ID' }
+                mensaje: "El médico con id " + id + " no existe.",
+                errors: { message: "No existe un médico con ese ID" }
             });
         }
 
-        // Dado que el usuario si existe, por este método es pertinente solo modificar estos datos
+        // Dado que el médico si existe, por este método es pertinente solo modificar estos datos
         documento.nombre = body.nombre;
-        documento.primer_apellido = body.primer_apellido;
-        documento.segundo_apellido = body.segundo_apellido;
-        documento.email = body.email;
-        documento.role = body.role;
+        documento.usuario = req.usuarioToken._id; // Añadido a la petición en mwAutenticacion.verificaToken
+        documento.hospital = body.hospital; // Nota: Se recibirá el id del hospital desde el frontend (problablemente desde algún input de form)
 
-        // Actualizamos el documento (usuario) en la BD
+        // Actualizamos el documento (medico) en la BD
         documento.save((err, edicionDocumento) => {
 
             if (err) {
                 return res.status(400).json({
                     ok: false,
-                    mensaje: "Error al actualizar usuario con id " + id + ".",
+                    mensaje: "Error al actualizar médico con id " + id + ".",
                     errors: err
                 });
             }
 
             // Si todo esta bien
-            // ¡PERO ANTES! Solo de manera visual mandamos un emoticon en vez de nuestra contraseña encriptada.
-            edicionDocumento.password = ';P';
-            res.status(200).json({
+            return res.status(200).json({
                 ok: true,
-                usuario: edicionDocumento
+                medico: edicionDocumento
                     //usuariotoken: req.usuarioToken // Añadido a la petición en mwAutenticacion.verificaToken
             });
+
         });
     });
 });
 
 // =========================================================
-// POST: Crear un nuevo usuario
+// POST: Crear un nuevo médico
 // =========================================================
 rutas.post('/', mwAutenticacion.verificaToken, (req, res) => {
 
@@ -127,79 +128,75 @@ rutas.post('/', mwAutenticacion.verificaToken, (req, res) => {
     // x-www-form-urlencoded enviados en la petición.
     var body = req.body;
 
-    // Creamos el usuario enviado en la petición
-    var usuario = new Usuario({
+    //body.usuario = req.usuarioToken._id; // Añadido a la petición en mwAutenticacion.verificaToken
+
+    // Creamos al médico enviado en la petición
+    var medico = new Medico({
         nombre: body.nombre,
-        primer_apellido: body.primer_apellido,
-        segundo_apellido: body.segundo_apellido,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
         img: body.img,
-        role: body.role
+        usuario: req.usuarioToken._id, // Añadido a la petición en mwAutenticacion.verificaToken
+        hospital: body.hospital // Nota: Se recibirá el id del hospital desde el frontend (problablemente desde algún input de form)
     });
 
-    // Guardamos el usuario en la BD
-    usuario.save((err, nuevoDocumento) => {
+    // Guardamos al médico en la BD
+    medico.save((err, nuevoDocumento) => {
 
-        // Si hubo algún error en la inserción
         if (err) {
             return res.status(400).json({
                 ok: false,
-                mensaje: "Error al crear usuario.",
+                mensaje: "Error al crear médico.",
                 errors: err
             });
         }
 
         // Si todo esta bien
-        res.status(201).json({
+        return res.status(201).json({
             ok: true,
-            usuario: nuevoDocumento,
-            usuariotoken: req.usuarioToken // Añadido a la petición en mwAutenticacion.verificaToken
+            medico: nuevoDocumento
+                //usuariotoken: req.usuarioToken // Añadido a la petición en mwAutenticacion.verificaToken
         });
     });
 });
 
 // =========================================================
-// DELETE: Eliminar un usuario
+// DELETE: Eliminar un médico
 // =========================================================
 rutas.delete('/:id', mwAutenticacion.verificaToken, (req, res) => {
 
     // Obtenemos el id de la petición
     var id = req.params.id;
 
-    // Buscamos por la existencia del usuario con la función findByIdAndDelete de mongoose
-    // Nota: También existe la función findByIdAndRemove (como se usa en el video) pero se recomienda usar AndDelete
-    Usuario.findByIdAndDelete(id, (err, eliminadoDocumento) => {
+    // Buscamos por la existencia del médico con la función findByIdAndDelete de mongoose
+    // Nota: También existe la función findByIdAndRemove pero se recomienda usar AndDelete
+    Medico.findByIdAndDelete(id, (err, eliminadoDocumento) => {
 
         // Si hubo algún error en la eliminación
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: "Error al eliminar usuario.",
+                mensaje: "Error al eliminar el médico",
                 errors: err
             });
         }
 
-        // Si no hay un documento (usuario) que eliminar
+        // Si no hay un documento (medico) que eliminar
         if (!eliminadoDocumento) {
             return res.status(400).json({
                 ok: false,
-                mensaje: "No existe un usuario con id " + id + ".",
-                errors: { message: 'No existe un usuario con ese ID.' }
+                mensaje: "No existe un médico con id " + id + ".",
+                errors: { message: "No existe un médico con ese ID" }
             });
         }
 
         // Si todo esta bien
-        res.status(200).json({
+        return res.status(200).json({
             ok: true,
-            usuario: eliminadoDocumento,
-            usuariotoken: req.usuarioToken // Añadido a la petición en mwAutenticacion.verificaToken
+            medico: eliminadoDocumento
+                //usuariotoken: req.usuarioToken // Añadido a la petición en mwAutenticacion.verificaToken
         });
-
     });
-
-
 });
+
 
 
 module.exports = rutas;
