@@ -1,8 +1,8 @@
 # Backend-Server
 
-Este es el código nevesario para establecer el Back-End conectado a MongoDB usando Mongoose.
+Este es el código necesario para establecer el Back-End conectado a MongoDB usando Mongoose.
 
-Para ejecutarlo, es necesario reconstruir los módulos de node usando el comando
+Para ejecutarlo, se deben reconstruir los módulos de node usando el comando:
 
 ```
 npm install
