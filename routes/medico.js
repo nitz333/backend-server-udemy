@@ -15,14 +15,16 @@ rutas.get('/', (req, res, next) => {
     // Para la paginación
     // Nota: Siempre que usamos query se trata de un parámetro opcional en la URL
     var desde = req.query.desde || 0;
+    var limit = req.query.limit || 10;
     desde = Number(desde);
+    limit = Number(limit);
 
     // Hacemos la búsqueda de todos los documentos (registros) de medicos en la BD
     // Nota: con populate() llenamos los datos que corresponden al id del usuario e id del hospital
     //       que los documentos de medicos tienen asociados. 
     Medico.find({})
         .skip(desde)
-        .limit(5)
+        .limit(limit)
         .populate('usuario', 'nombre primer_apellido segundo_apellido email')
         .populate('hospital')
         .exec(
@@ -53,6 +55,49 @@ rutas.get('/', (req, res, next) => {
                 });
 
             });
+});
+
+// =========================================================
+// GET: Obtener un médico
+// =========================================================
+rutas.get('/:id', (req, res) => {
+
+    // Obtenemos el id de la petición
+    var id = req.params.id;
+
+    Medico.findById(id)
+        .populate('usuario', 'nombre primer_apellido segundo_apellido email img')
+        .populate('hospital')
+        .exec((err, documento) => {
+
+            // Si hubo algún error en la búsqueda
+            // Nota: No es error 400 ya que los métodos find* regresan siempre algo, puede ser null, pero si no entonces es un error 500
+            if (err) {
+                return res.status(500).json({
+                    ok: false,
+                    mensaje: "Error al buscar médico",
+                    errors: err
+                });
+            }
+
+            // Si no existe el documento
+            // Nota: Aquí sí es error 400
+            if (!documento) {
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: "El médico con id " + id + " no existe.",
+                    errors: { message: "No existe un médico con ese ID" }
+                });
+            }
+
+            // Si todo esta bien
+            return res.status(200).json({
+                ok: true,
+                medico: documento
+            });
+
+        });
+
 });
 
 // =========================================================

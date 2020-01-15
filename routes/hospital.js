@@ -10,19 +10,21 @@ var Hospital = require('../models/hospital');
 // =========================================================
 // GET: Obtener todos los hospitales
 // =========================================================
-rutas.get('/', (req, res, next) => {
+rutas.get('/', (req, res) => {
 
     // Para la paginación
     // Nota: Siempre que usamos query se trata de un parámetro opcional en la URL
     var desde = req.query.desde || 0;
+    var limit = req.query.limit || 10;
     desde = Number(desde);
+    limit = Number(limit);
 
     // Hacemos la búsqueda de todos los documentos (registros) de hospitales en la BD
     // Nota: con populate() llenamos los datos que corresponden al id del usuario que los documentos de
     // de hospitales tienen asociados.  
     Hospital.find({})
         .skip(desde)
-        .limit(5)
+        .limit(limit)
         .populate('usuario', 'nombre primer_apellido segundo_apellido email')
         .exec(
             (err, docs) => {
@@ -51,6 +53,42 @@ rutas.get('/', (req, res, next) => {
                 });
 
             });
+});
+
+// =========================================================
+// GET: Obtener un hospital por su ID
+// =========================================================
+rutas.get('/:id', (req, res) => {
+
+    var id = req.params.id;
+
+    Hospital.findById(id)
+        .populate('usuario', 'nombre primer_apellido segundo_apellido img email')
+        .exec((err, doc) => {
+
+            // Si hubo algún error en la base de datos
+            if (err) {
+                return res.status(500).json({
+                    ok: false,
+                    mensaje: "Error al buscar hospital.",
+                    errors: err
+                });
+            }
+
+            if (!doc) {
+                return res.status(400).json({
+                    ok: false,
+                    mensaje: "El hospital con el id " + id + " no existe.",
+                    errors: err
+                });
+            }
+
+            res.status(200).json({
+                ok: true,
+                hospital: doc
+            });
+
+        });
 });
 
 // =========================================================

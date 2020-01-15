@@ -108,7 +108,7 @@ function buscarHospitales(regexp) {
     return new Promise((resolve, reject) => {
 
         Hospital.find({ nombre: regexp })
-            .populate('usuario', 'nombre primer_apellido segundo apellido email')
+            .populate('usuario', 'nombre primer_apellido segundo apellido email img')
             .exec((err, documentos) => {
 
                 if (err) {
@@ -126,7 +126,7 @@ function buscarMedicos(regexp) {
     return new Promise((resolve, reject) => {
 
         Medico.find({ nombre: regexp })
-            .populate('usuario', 'nombre primer_apellido segundo apellido email')
+            .populate('usuario', 'nombre primer_apellido segundo apellido email img')
             .populate('hospital')
             .exec((err, documentos) => {
 
@@ -146,7 +146,7 @@ function buscarUsuarios(regexp) {
 
         // Queremos buscar en dos campos dentro del documento de un usuario, en su nombre y su email,
         // para lograr esto usaremos la función or() de mongoose
-        Usuario.find({}, 'nombre primer_apellido segundo_apellido email role')
+        Usuario.find({}, 'nombre primer_apellido segundo_apellido email img role')
             .or([{ 'nombre': regexp }, { 'primer_apellido': regexp }, { 'segundo_apellido': regexp }, { 'email': regexp }])
             .exec((err, documentos) => {
 

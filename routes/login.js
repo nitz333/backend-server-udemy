@@ -17,6 +17,28 @@ var CLIENT_ID = require('../config/config').CLIENT_ID;
 const { OAuth2Client } = require('google-auth-library');
 const client = new OAuth2Client(CLIENT_ID);
 
+// Usaremos middlewares de autenticación para verificar el token y renovarlo
+var mwAutenticacion = require('../middlewares/autenticacion');
+
+
+// =========================================================
+// GET: Renovar token (requiere de un token aún válido)
+// =========================================================
+rutas.get('/renuevatoken', mwAutenticacion.verificaToken, (req, res) => {
+
+    // El middleware verificaToken, en caso de ser satisfactorio, crea un usuarioToken en req,
+    // entonces vamos a generar un token válido por 4 horas más:
+    // Nota: Es importante aclarar que los tokens generados de esta forma mueren hasta que terminen
+    //       su tiempo de vida, es decir, no sustituyen a algún otro.
+    var token = jwt.sign({ usuario: req.usuarioToken }, SEED, { expiresIn: 14400 }); // 4 horas
+
+    res.status(200).json({
+        ok: true,
+        //usuario: req.usuarioToken,
+        token: token
+    });
+
+});
 
 
 // =========================================================
@@ -78,7 +100,8 @@ rutas.post('/', (req, res) => {
             ok: true,
             usuario: documentoUsuario,
             token: token,
-            id: documentoUsuario._id
+            id: documentoUsuario._id,
+            menu: obtenerMenu(documentoUsuario.role)
         });
 
     });
@@ -149,7 +172,8 @@ rutas.post('/google', async(req, res) => {
                     ok: true,
                     usuario: documentoUsuario,
                     token: token,
-                    id: documentoUsuario._id
+                    id: documentoUsuario._id,
+                    menu: obtenerMenu(documentoUsuario.role)
                 });
             }
 
@@ -182,7 +206,8 @@ rutas.post('/google', async(req, res) => {
                     ok: true,
                     usuario: nuevoDocumento,
                     token: token,
-                    id: nuevoDocumento._id
+                    id: nuevoDocumento._id,
+                    menu: obtenerMenu(nuevoDocumento.role)
                 });
 
             });
@@ -222,6 +247,41 @@ async function verify(token) {
     };
 }
 //verify(token).catch(console.error);
+
+function obtenerMenu(ROLE) {
+    // Este menú será construido dinámicamente de acuerdo al perfil del usuario.
+    // Nota: Para este ejemplo estará en duro aquí pero se recomienda que este tipo de menús
+    //       provengan de la BD para dar más dinamismo.
+    var menu = [{
+            titulo: 'Principal',
+            icono: 'mdi mdi-gauge',
+            submenu: [
+                { titulo: 'Dashboard', url: '/dashboard' },
+                { titulo: 'ProgressBar', url: '/progress' },
+                { titulo: 'Gráficas', url: '/grafica1' },
+                { titulo: 'Promesas', url: '/promesas' },
+                { titulo: 'RxJs', url: '/rxjs' },
+            ]
+        },
+        {
+            titulo: 'Mantenimiento',
+            icono: 'mdi mdi-folder-lock-open',
+            submenu: [
+                //{ titulo: 'Usuarios', url: '/usuarios' },
+                { titulo: 'Hospitales', url: '/hospitales' },
+                { titulo: 'Médicos', url: '/medicos' }
+            ]
+        }
+    ];
+
+    // Para agregar elementos de acuerdo al rol del usuario, si este menú estuviera en una BD se haría
+    // con selects, pero aquí podemos usar funciones de array para insertar elementos al arreglo de menú:
+    if (ROLE === 'ADMIN_ROLE') {
+        menu[1].submenu.unshift({ titulo: 'Usuarios', url: '/usuarios' });
+    }
+
+    return menu;
+}
 
 
 module.exports = rutas;

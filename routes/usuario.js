@@ -1,7 +1,7 @@
 var express = require('express');
 // Librería para encriptar cadenas (en nuestro caso para la contraseña)
 var bcrypt = require('bcryptjs');
-// Usaremos el middleware de autenticación por token para ciertas peticiones
+// Usaremos middlewares de autenticación (token y/o role) para ciertas peticiones
 var mwAutenticacion = require('../middlewares/autenticacion');
 
 var rutas = express();
@@ -12,17 +12,19 @@ var Usuario = require('../models/usuario');
 // =========================================================
 // GET: Obtener todos los usuarios
 // =========================================================
-rutas.get('/', (req, res, next) => {
+rutas.get('/', (req, res) => {
 
     // Para la paginación
     // Nota: Siempre que usamos query se trata de un parámetro opcional en la URL
     var desde = req.query.desde || 0;
+    var limit = req.query.limit || 10;
     desde = Number(desde);
+    limit = Number(limit);
 
     // Hacemos la búsqueda de todos los documentos (registros) de usuarios en la BD
-    Usuario.find({}, 'nombre primer_apellido segundo_apellido email img role')
+    Usuario.find({}, 'nombre primer_apellido segundo_apellido email img role google')
         .skip(desde)
-        .limit(5)
+        .limit(limit)
         .exec(
             (err, docs) => {
 
@@ -56,7 +58,7 @@ rutas.get('/', (req, res, next) => {
 // =========================================================
 // PUT: Actualizar un usuario (petición PUT o PATCH es prácticamente lo mismo)
 // =========================================================
-rutas.put('/:id', mwAutenticacion.verificaToken, (req, res) => {
+rutas.put('/:id', [mwAutenticacion.verificaToken, mwAutenticacion.verificaAdminRoleOMismoId], (req, res) => {
 
     // Obtenemos el id de la petición
     var id = req.params.id;
@@ -121,7 +123,7 @@ rutas.put('/:id', mwAutenticacion.verificaToken, (req, res) => {
 // =========================================================
 // POST: Crear un nuevo usuario
 // =========================================================
-rutas.post('/', mwAutenticacion.verificaToken, (req, res) => {
+rutas.post('/', (req, res) => {
 
     // Gracias a la librería 'Body Parser', podemos usar su método body para obtener los parámetros
     // x-www-form-urlencoded enviados en la petición.
@@ -162,7 +164,7 @@ rutas.post('/', mwAutenticacion.verificaToken, (req, res) => {
 // =========================================================
 // DELETE: Eliminar un usuario
 // =========================================================
-rutas.delete('/:id', mwAutenticacion.verificaToken, (req, res) => {
+rutas.delete('/:id', [mwAutenticacion.verificaToken, mwAutenticacion.verificaAdminRole], (req, res) => {
 
     // Obtenemos el id de la petición
     var id = req.params.id;

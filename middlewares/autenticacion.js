@@ -40,3 +40,56 @@ exports.verificaToken = function(req, res, next) {
     });
 
 };
+
+// =========================================================
+// Verificación de role ADMIN_ROLE
+// =========================================================
+exports.verificaAdminRole = function(req, res, next) {
+
+    // Nota: No necesitamos verificar token porque eso ya lo hace el middleware previo (verificaToken),
+    //       además ese middleware ya nos creo al usuario, esto es gracias al next() que arrojó al final
+    //       y que este nuevo middleware que estamos creando esta escrito físicamente debajo de él, por eso
+    //       el orden en los middlewares que arrojan next() es muy importante.
+    var usuario = req.usuarioToken;
+
+    if (usuario.role === 'ADMIN_ROLE') {
+        // Le indicamos al middleware que permita continuar con el código de quien lo solicitó.
+        next();
+        return; // Este return está demás, ya que el next() anterior nos saca, pero no vaya a ser el diablo!
+    } else {
+        return res.status(401).json({
+            ok: false,
+            mensaje: 'Token inválido. dev:->No es ADMIN_ROLE',
+            errors: { message: 'Acción permitida solo para administradores' }
+        });
+    }
+
+};
+
+// =========================================================
+// Verificación de role ADMIN_ROLE o mismo id de usuario
+// =========================================================
+exports.verificaAdminRoleOMismoId = function(req, res, next) {
+
+    // Nota: No necesitamos verificar token porque eso ya lo hace el middleware previo (verificaToken),
+    //       además ese middleware ya nos creo al usuario, esto es gracias al next() que arrojó al final
+    //       y que este nuevo middleware que estamos creando esta escrito físicamente debajo de él, por eso
+    //       el orden en los middlewares que arrojan next() es muy importante.
+    var usuario = req.usuarioToken;
+    // Este middleware se usará en una petición donde se reciba como parámetro un id, de lo contrario no funcionará.
+    // Asumamos que es así:
+    var id = req.params.id;
+
+    if (usuario.role === 'ADMIN_ROLE' || usuario._id === id) {
+        // Le indicamos al middleware que permita continuar con el código de quien lo solicitó.
+        next();
+        return; // Este return está demás, ya que el next() anterior nos saca, pero no vaya a ser el diablo!
+    } else {
+        return res.status(401).json({
+            ok: false,
+            mensaje: 'Token inválido. dev:->No es ADMIN_ROLE o mismo usuario',
+            errors: { message: 'Acción permitida solo para administradores o mismo usuario' }
+        });
+    }
+
+};

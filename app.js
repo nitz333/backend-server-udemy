@@ -15,6 +15,14 @@ var bodyParser = require('body-parser');
 // Con esto se configura e inicializa el servidor express:
 var app = express();
 
+// CORS (permitir peticiones desde otros dominios, configuración light: https://enable-cors.org/server_expressjs.html)
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*"); // update to match the domain you will make the request from (* para cualquiera)
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS");
+    next();
+});
+
 // Configuramos la librería 'Body Parser' (https://www.npmjs.com/package/body-parser)
 app.use(bodyParser.urlencoded({ extended: false })); // parse application/x-www-form-urlencoded
 app.use(bodyParser.json()); // parse application/json
